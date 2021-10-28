@@ -1,7 +1,10 @@
 ## Project Full-stack React with GraphQl, Typescript and MikroOrm  
 ## Requirements  
 
-### How to run:  
+### How to run: 
+Must install postgresql and create your own database, this project is just using it's database with default user and password  
+- https://www.postgresql.org/download/  
+
 ```
 1. use node 14.17.0   
 2. npm i  
