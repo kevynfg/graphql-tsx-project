@@ -1,0 +1,7 @@
+{
+    "typescript.preferences.quoteStyle": "double",
+    "javascript.preferences.quoteStyle": "double",
+    "editor.formatOnSave": true,
+    "editor.fontFamily": "Fira Code",
+    "editor.autoIndent": "keep"
+}
