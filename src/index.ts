@@ -10,55 +10,65 @@ import { UserResolver } from "./resolvers/user";
 import redis from "redis";
 import session from "express-session";
 import connectRedis from "connect-redis";
-import { MyContext } from "./types";
+import cors from "cors";
 
 const main = async () => {
-  const orm = await MikroORM.init(mikroConfig);
-  await orm.getMigrator().up();
+    const orm = await MikroORM.init(mikroConfig);
+    await orm.getMigrator().up();
 
-  const app = express();
+    const app = express();
 
-  const RedisStore = connectRedis(session);
-  const redisClient = redis.createClient();
+    const RedisStore = connectRedis(session);
+    const redisClient = redis.createClient();
 
-  app.use(
-    session({
-      name: "qid",
-      store: new RedisStore({
-        client: redisClient,
-        disableTouch: true,
-      }),
-      cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 365 * 10, //10 years
-        httpOnly: true, //disable front-end access for cookies
-        sameSite: "lax", //csrf
-        secure: __prod__, //cookie only works in https
-      },
-      secret: "idontknowhow",
-      resave: false,
-      saveUninitialized: false,
-    })
-  );
+    app.use(
+        cors({
+            origin: "http://localhost:3000",
+            credentials: true,
+        })
+    );
 
-  const apolloServer = new ApolloServer({
-    schema: await buildSchema({
-      resolvers: [PostResolver, UserResolver],
-      validate: false,
-    }),
-    context: ({ req, res }): MyContext => ({
-      em: orm.em,
-      req,
-      res,
-    }),
-  });
+    app.use(
+        session({
+            name: "qid",
+            store: new RedisStore({
+                client: redisClient,
+                disableTouch: true,
+            }),
+            cookie: {
+                maxAge: 1000 * 60 * 60 * 24 * 365 * 10, //10 years
+                httpOnly: true, //disable front-end access for cookies
+                sameSite: "lax", //csrf
+                secure: __prod__, //cookie only works in https
+            },
+            secret: "idontknowhow",
+            resave: false,
+            saveUninitialized: false,
+        })
+    );
 
-  await apolloServer.start();
+    const apolloServer = new ApolloServer({
+        schema: await buildSchema({
+            resolvers: [PostResolver, UserResolver],
+            validate: false,
+        }),
+        context: ({ req, res }) => ({
+            em: orm.em,
+            req,
+            res,
+        }),
+    });
 
-  apolloServer.applyMiddleware({ app });
+    await apolloServer.start();
 
-  app.listen(4000, () => {
-    console.log("server started on localhost:4000");
-  });
+    apolloServer.applyMiddleware({
+        app,
+        cors: false,
+    });
+
+    app.listen(4000, () => {
+        console.log("server started on localhost:4000");
+    });
 };
 
 main();

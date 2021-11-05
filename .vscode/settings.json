@@ -3,5 +3,8 @@
     "javascript.preferences.quoteStyle": "double",
     "editor.formatOnSave": true,
     "editor.fontFamily": "Fira Code",
-    "editor.autoIndent": "keep"
+    "editor.autoIndent": "keep",
+    "editor.smoothScrolling": true,
+    "prettier.tabWidth": 4,
+    "editor.tabSize": 4
 }
