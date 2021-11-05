@@ -1,4 +1,6 @@
 ## Project Full-stack React with GraphQl, Typescript and MikroOrm  
+Project made with latest of frameworks and stacks technologies  
+
 ## Requirements  
 
 ### How to run: 
