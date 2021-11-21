@@ -3,14 +3,18 @@ import {
     Arg,
     Ctx,
     Field,
+    FieldResolver,
     InputType,
+    Int,
     Mutation,
     Query,
     Resolver,
+    Root,
     UseMiddleware,
 } from "type-graphql";
 import { isAuth } from "../middleware/isAuth";
 import { MyContext } from "../types";
+import { getConnection } from "typeorm";
 
 @InputType()
 class PostInput {
@@ -20,11 +24,32 @@ class PostInput {
     text: string;
 }
 
-@Resolver()
+@Resolver(Post)
 export class PostResolver {
+    @FieldResolver(() => String)
+    textSnippet(@Root() root: Post) {
+        return root.text.slice(0, 50);
+    }
+
     @Query(() => [Post])
-    posts(): Promise<Post[]> {
-        return Post.find();
+    posts(
+        @Arg("limit", () => Int) limit: number,
+        @Arg("cursor", () => String, { nullable: true }) cursor: string | null // works just like 'offset' but a little better
+    ): Promise<Post[]> {
+        const realLimit = Math.min(50, limit); //limit is 50 only
+        const queryBuilder = getConnection()
+            .getRepository(Post)
+            .createQueryBuilder("p")
+            .orderBy('"createdAt"', "DESC") //postgresql needs double quotes
+            .take(realLimit); //pagination
+
+        if (cursor) {
+            queryBuilder.where('"createdAt" < :cursor', {
+                cursor: new Date(parseInt(cursor)),
+            });
+        }
+
+        return queryBuilder.getMany();
     }
 
     @Query(() => Post, { nullable: true })
