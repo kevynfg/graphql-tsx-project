@@ -1,8 +1,6 @@
 import "reflect-metadata";
-import { MikroORM } from "@mikro-orm/core";
 import express from "express";
 import { COOKIE_NAME, __prod__ } from "./constants";
-import mikroConfig from "./mikro-orm.config";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import { PostResolver } from "./resolvers/post";
@@ -11,10 +9,20 @@ import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
 import cors from "cors";
+import { createConnection } from "typeorm";
+import { Post } from "./entities/Post";
+import { User } from "./entities/User";
 
 const main = async () => {
-    const orm = await MikroORM.init(mikroConfig);
-    await orm.getMigrator().up();
+    await createConnection({
+        type: "postgres",
+        database: "jellyfish2",
+        username: "postgres",
+        password: "postgres",
+        logging: true,
+        synchronize: true,
+        entities: [Post, User],
+    });
 
     const app = express();
 
@@ -25,6 +33,8 @@ const main = async () => {
         cors({
             origin: "http://localhost:3000",
             credentials: true,
+            methods: ["GET", "POST", "UPDATE", "PUT", "PATCH", "DELETE"],
+            allowedHeaders: ["Content-Type", "Authorization", "Accept"],
         })
     );
 
@@ -53,7 +63,6 @@ const main = async () => {
             validate: false,
         }),
         context: ({ req, res }) => ({
-            em: orm.em,
             req,
             res,
             Redis,
