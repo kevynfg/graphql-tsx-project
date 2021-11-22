@@ -25,7 +25,10 @@ const main = async () => {
         entities: [Post, User],
         migrations: [path.join(__dirname, "./migrations/*")],
     });
-    // await conn.runMigrations();
+    await conn.runMigrations();
+
+    // await Post.delete({});
+
     const app = express();
 
     const RedisStore = connectRedis(session);
@@ -33,7 +36,7 @@ const main = async () => {
 
     app.use(
         cors({
-            origin: "http://localhost:3000",
+            origin: "*",
             credentials: true,
             methods: ["GET", "POST", "UPDATE", "PUT", "PATCH", "DELETE"],
             allowedHeaders: ["Content-Type", "Authorization", "Accept"],
