@@ -1,0 +1,4 @@
+ssr 
+    ssr requests = browser -> next.js (server) -> graphql api (nextjs server not sending cookie)
+client side
+    client requests = broser -> graphql api (when we get a cookie)
