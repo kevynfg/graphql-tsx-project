@@ -17,6 +17,7 @@ import { isAuth } from "../middleware/isAuth";
 import { MyContext } from "../types";
 import { getConnection } from "typeorm";
 import { Updoot } from "../entities/Updoot";
+import { User } from "./../entities/User";
 
 @InputType()
 class PostInput {
@@ -40,6 +41,11 @@ export class PostResolver {
     @FieldResolver(() => String)
     textSnippet(@Root() root: Post) {
         return root.text.slice(0, 50);
+    }
+
+    @FieldResolver(() => User)
+    creator(@Root() post: Post) {
+        return User.findOne(post.creatorId);
     }
 
     @Mutation(() => Boolean)
@@ -139,28 +145,13 @@ export class PostResolver {
                     ? '(select value from updoot where "userId" = $2 and "postId" = p.id) "voteStatus"'
                     : 'null as "voteStatus"'
             } 
-            from post p 
-            inner join public.user u on u.id = p."creatorId"
+            from post p
             ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
             order by p."createdAt" DESC
             limit $1
         `,
             replacements
         );
-
-        // const queryBuilder = getConnection()
-        //     .getRepository(Post)
-        //     .createQueryBuilder("p")
-        //     .innerJoinAndSelect("p.creator", "u", 'u.id = p."creatorId"')
-        //     .orderBy('p."createdAt"', "DESC") //postgresql needs double quotes
-        //     .take(realLimitPlusOne); //pagination
-
-        // if (cursor) {
-        //     queryBuilder.where('p."createdAt" < :cursor', {
-        //         cursor: new Date(parseInt(cursor)),
-        //     });
-        // }
-        // const posts = await queryBuilder.getMany();
 
         return {
             posts: posts.slice(0, realLimit),
@@ -169,7 +160,7 @@ export class PostResolver {
     }
 
     @Query(() => Post, { nullable: true })
-    post(@Arg("id") id: number): Promise<Post | undefined> {
+    post(@Arg("id", () => Int) id: number): Promise<Post | undefined> {
         return Post.findOne(id);
     }
 
@@ -187,23 +178,45 @@ export class PostResolver {
     }
 
     @Mutation(() => Post, { nullable: true })
+    @UseMiddleware(isAuth)
     async updatePost(
-        @Arg("id") id: number,
-        @Arg("title", () => String, { nullable: true }) title: string
+        @Arg("id", () => Int) id: number,
+        @Arg("title") title: string,
+        @Arg("text") text: string,
+        @Ctx() { req }: MyContext
     ): Promise<Post | null> {
-        const post = await Post.findOne(id);
-        if (!post) {
-            return null;
-        }
-        if (typeof title !== "undefined") {
-            await Post.update({ id }, { title });
-        }
-        return post;
+        const result = await getConnection()
+            .createQueryBuilder()
+            .update(Post)
+            .set({ title, text })
+            .where('id = :id and "creatorId" = :creatorId', {
+                id,
+                creatorId: req.session.userId,
+            })
+            .returning("*")
+            .execute();
+
+        return result.raw[0];
     }
 
     @Mutation(() => Boolean)
-    async deletePost(@Arg("id") id: number): Promise<boolean> {
-        await Post.delete(id);
-        return true;
+    // @UseMiddleware(isAuth)
+    async deletePost(
+        @Arg("id", () => Int) id: number,
+        @Ctx() { req }: MyContext
+    ): Promise<boolean> {
+        // const post = await Post.findOne(id);
+        // if (!post) {
+        //     return false;
+        // }
+        // if (post.creatorId !== req.session.userId) {
+        //     throw new Error("not authorized");
+        // }
+        // await Updoot.delete({ postId: id });
+        if (req.session.userId) {
+            await Post.delete({ id, creatorId: req.session.userId });
+            return true;
+        }
+        return false;
     }
 }

@@ -203,17 +203,24 @@ export class UserResolver {
 
     @Mutation(() => UserResponse)
     async login(
-        @Arg("usernameOrEmail") usernameOrEmail: string,
+        @Arg("username") username: string,
         @Arg("password") password: string,
         @Ctx() { req }: MyContext
     ): Promise<UserResponse> {
-        const user = await User.findOne(
-            usernameOrEmail.includes("@")
-                ? { where: { email: usernameOrEmail } }
-                : { where: { username: usernameOrEmail } }
-        );
-        console.log("user: ", user);
-        if (!user) {
+        // const user = await User.findOne(
+        //     usernameOrEmail.includes("@")
+        //         ? { where: { email: usernameOrEmail } }
+        //         : { where: { username: usernameOrEmail } }
+        // );
+        const emailOrUsername = username.includes("@") ? "email" : "username";
+        const user = await getConnection()
+            .createQueryBuilder()
+            .addFrom(User, "u")
+            .where(`u.${emailOrUsername} = :username`, {
+                username,
+            })
+            .execute();
+        if (!user[0]) {
             return {
                 errors: [
                     {
@@ -223,7 +230,7 @@ export class UserResolver {
                 ],
             };
         }
-        const valid = await argon2.verify(user.password, password);
+        const valid = await argon2.verify(user[0].password, password);
         if (!valid) {
             return {
                 errors: [
@@ -235,9 +242,8 @@ export class UserResolver {
             };
         }
 
-        req.session.userId = user.id;
-        console.log("username", req.session.userId);
-        return { user };
+        req.session.userId = user[0].id;
+        return user[0];
     }
 
     @Mutation(() => Boolean)
