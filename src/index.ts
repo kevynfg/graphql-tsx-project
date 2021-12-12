@@ -20,29 +20,25 @@ import { createUpdootLoader } from "./utils/createUpdootLoader";
 const main = async () => {
     const conn = await createConnection({
         type: "postgres",
-        database: "jellyfish2",
-        username: "postgres",
-        password: "postgres",
+        url: process.env.DATABASE_URL,
         logging: true,
-        synchronize: true,
+        // synchronize: true,
         entities: [Post, User, Updoot],
         migrations: [path.join(__dirname, "./migrations/*")],
     });
-    await conn.runMigrations();
+    // await conn.runMigrations();
 
     // await Post.delete({});
 
     const app = express();
 
     const RedisStore = connectRedis(session);
-    const redisClient = new Redis();
-
+    const redisClient = new Redis(process.env.REDIS_URL);
+    app.set("trust proxy", 1);
     app.use(
         cors({
-            origin: "http://localhost:3000",
+            origin: process.env.CORS_ORIGIN,
             credentials: true,
-            methods: ["GET", "POST", "UPDATE", "PUT", "PATCH", "DELETE"],
-            allowedHeaders: ["Content-Type", "Authorization", "Accept"],
         })
     );
 
@@ -59,7 +55,7 @@ const main = async () => {
                 sameSite: "lax", //csrf
                 secure: __prod__, //cookie only works in https
             },
-            secret: "idontknowhow",
+            secret: process.env.SESSION_SECRET,
             resave: false,
             saveUninitialized: false,
         })
@@ -84,8 +80,8 @@ const main = async () => {
         app,
         cors: false,
     });
-
-    app.listen(4000, () => {
+    const port = parseInt(process.env.PORT);
+    app.listen(port, () => {
         console.log("server started on localhost:4000");
     });
 };
