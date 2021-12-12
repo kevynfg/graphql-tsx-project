@@ -44,8 +44,23 @@ export class PostResolver {
     }
 
     @FieldResolver(() => User)
-    creator(@Root() post: Post) {
-        return User.findOne(post.creatorId);
+    creator(@Root() post: Post, @Ctx() { userLoader }: MyContext) {
+        return userLoader.load(post.creatorId);
+    }
+
+    @FieldResolver(() => Int, { nullable: true })
+    async voteStatus(
+        @Root() post: Post,
+        @Ctx() { updootLoader, req }: MyContext
+    ) {
+        if (!req.session.userId) {
+            return;
+        }
+        const updoot = await updootLoader.load({
+            postId: post.id,
+            userId: req.session.userId,
+        });
+        return updoot ? updoot.value : null;
     }
 
     @Mutation(() => Boolean)
@@ -111,42 +126,24 @@ export class PostResolver {
     async posts(
         @Arg("limit", () => Int) limit: number,
         @Arg("cursor", () => String, { nullable: true }) cursor: string | null, // works just like 'offset' but a little better
-        @Ctx() { req }: MyContext
+        @Ctx() { updootLoader }: MyContext
     ): Promise<PaginatedPosts> {
         const realLimit = Math.min(50, limit); //limit is 50 only
         const realLimitPlusOne = realLimit + 1; // 20 -> 21
 
         const replacements: any[] = [realLimitPlusOne];
 
-        if (req.session.userId) {
-            replacements.push(req.session.userId);
-        }
-
-        let cursorIdx = 3;
         if (cursor) {
             replacements.push(new Date(parseInt(cursor)));
-            cursorIdx = replacements.length;
         }
 
         //$1 is any value inside replacements at first position
         //json_build_object creates an object with nested values on postgresql
         const posts = await getConnection().query(
             `
-            select p.*, 
-            json_build_object(
-            'id', u.id,
-            'username', u.username,
-            'email', u.email,
-            'createdAt', u."createdAt",
-            'updatedAt', u."updatedAt"
-            ) creator,
-            ${
-                req.session.userId
-                    ? '(select value from updoot where "userId" = $2 and "postId" = p.id) "voteStatus"'
-                    : 'null as "voteStatus"'
-            } 
+            select p.*
             from post p
-            ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
+            ${cursor ? `where p."createdAt" < $2` : ""}
             order by p."createdAt" DESC
             limit $1
         `,
