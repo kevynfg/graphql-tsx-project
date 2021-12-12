@@ -1,4 +1,4 @@
-// import "reflect-metadata";
+import "reflect-metadata";
 import express from "express";
 import { COOKIE_NAME, __prod__ } from "./constants";
 import { ApolloServer } from "apollo-server-express";
