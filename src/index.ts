@@ -1,4 +1,4 @@
-import "reflect-metadata";
+// import "reflect-metadata";
 import express from "express";
 import { COOKIE_NAME, __prod__ } from "./constants";
 import { ApolloServer } from "apollo-server-express";
@@ -18,7 +18,7 @@ import { createUserLoader } from "./utils/createUserLoader";
 import { createUpdootLoader } from "./utils/createUpdootLoader";
 
 const main = async () => {
-    const conn = await createConnection({
+    await createConnection({
         type: "postgres",
         url: process.env.DATABASE_URL,
         logging: true,
